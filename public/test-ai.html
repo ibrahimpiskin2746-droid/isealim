@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .test-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        #result {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            min-height: 50px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .modal-close {
+            float: right;
+            font-size: 30px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: #666;
+            padding: 0;
+            margin: 0;
+        }
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .chat-message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .chat-message.ai {
+            background: #e3f2fd;
+        }
+        .chat-message.user {
+            background: #667eea;
+            color: white;
+            margin-left: 20%;
+        }
+        input {
+            width: 70%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 AI Özellikler Test Sayfası</h1>
+    
+    <div class="test-section">
+        <h2>Test Butonları</h2>
+        <button onclick="testAnalyze()">📄 CV Analizi Testi</button>
+        <button onclick="testChat()">💬 AI Sohbet Testi</button>
+        <button onclick="testInterview()">🎤 Mülakat İpuçları Testi</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <!-- AI Chat Modal -->
+    <div id="aiChatModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeChat()">&times;</button>
+            <h3>🤖 AI Kariyer Danışmanı</h3>
+            <div id="chatContainer" class="chat-container"></div>
+            <div>
+                <input 
+                    type="text" 
+                    id="chatInput" 
+                    placeholder="Mesajınızı yazın..."
+                    onkeypress="if(event.key === 'Enter') sendMsg()"
+                >
+                <button onclick="sendMsg()">Gönder</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('Test page loaded!');
+
+        function testAnalyze() {
+            console.log('testAnalyze called');
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<h3>🔄 Analiz yapılıyor...</h3>';
+            
+            setTimeout(() => {
+                resultDiv.innerHTML = `
+                    <h3>📊 CV Uyumluluk Analizi</h3>
+                    <p><strong>Uyumluluk Skoru: 87%</strong></p>
+                    <p>✅ Güçlü Yönler:</p>
+                    <ul>
+                        <li>Tecrübe seviyeniz uygun</li>
+                        <li>Teknik beceriler mevcut</li>
+                    </ul>
+                    <p>💡 Öneriler:</p>
+                    <ul>
+                        <li>Sertifikalarınızı ekleyin</li>
+                        <li>LinkedIn'i güncelleyin</li>
+                    </ul>
+                `;
+            }, 1000);
+        }
+
+        function testChat() {
+            console.log('testChat called');
+            document.getElementById('aiChatModal').classList.add('active');
+            const container = document.getElementById('chatContainer');
+            if (container.children.length === 0) {
+                addMessage('Merhaba! 👋 Size nasıl yardımcı olabilirim?', 'ai');
+            }
+        }
+
+        function closeChat() {
+            console.log('closeChat called');
+            document.getElementById('aiChatModal').classList.remove('active');
+        }
+
+        function addMessage(text, type) {
+            const container = document.getElementById('chatContainer');
+            const div = document.createElement('div');
+            div.className = 'chat-message ' + type;
+            div.textContent = text;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMsg() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            addMessage(msg, 'user');
+            input.value = '';
+            
+            setTimeout(() => {
+                const responses = [
+                    'Bu pozisyon için harika bir aday görünüyorsunuz! 🎯',
+                    'CV\'nizde güçlü yönlerinizi vurgulayın.',
+                    'Şirket kültürü hakkında araştırma yapmanızı öneririm.',
+                    'Mülakat için STAR metodunu kullanın.'
+                ];
+                addMessage(responses[Math.floor(Math.random() * responses.length)], 'ai');
+            }, 800);
+        }
+
+        function testInterview() {
+            console.log('testInterview called');
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <h3>🎤 Mülakat Hazırlık Rehberi</h3>
+                <p><strong>📋 Muhtemel Sorular:</strong></p>
+                <ul>
+                    <li>Kendinizi tanıtır mısınız?</li>
+                    <li>En büyük başarınızdan bahseder misiniz?</li>
+                    <li>5 yıl sonra kendinizi nerede görüyorsunuz?</li>
+                </ul>
+                <p><strong>💡 İpuçları:</strong></p>
+                <ul>
+                    <li>STAR metodunu kullanın</li>
+                    <li>Şirket araştırması yapın</li>
+                    <li>Samimi ve özgün olun</li>
+                </ul>
+            `;
+        }
+
+        // Modal dışına tıklanınca kapat
+        document.getElementById('aiChatModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeChat();
+            }
+        });
+    </script>
+</body>
+</html>

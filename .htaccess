@@ -1,0 +1,30 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /isealim/
+    
+    # Public klasördeki dosyalara doğrudan erişim
+    RewriteRule ^(public/.*)$ $1 [L]
+    
+    # Diğer her şeyi public/index.php'ye yönlendir
+    RewriteRule ^(.*)$ public/index.php?url=$1 [QSA,L]
+</IfModule>
+
+# Güvenlik
+<FilesMatch "\.(env|json|sql|md|log)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# PHP ayarları
+php_flag display_errors Off
+php_flag log_errors On
+php_value error_log logs/php_errors.log
+php_value upload_max_filesize 10M
+php_value post_max_size 10M
+php_value max_execution_time 300
+php_value memory_limit 256M
+
+# Karakter kodlaması
+AddDefaultCharset UTF-8
