@@ -576,6 +576,98 @@ class ApplicantController extends Controller {
     }
     
     /**
+     * Profil sayfası - Görüntüleme ve güncelleme
+     * 
+     * @return void
+     */
+    public function profile() {
+        try {
+            $applicantId = authId();
+            
+            if ($this->isPost()) {
+                $this->verifyCsrf();
+                
+                // Validasyon
+                $errors = $this->validate([
+                    'full_name' => 'required|min:3|max:100',
+                    'phone' => 'max:20'
+                ]);
+                
+                if (!empty($errors)) {
+                    setFlash('error', 'Lütfen formu doğru şekilde doldurun');
+                    redirect('applicant/profile');
+                }
+                
+                $data = [
+                    'full_name' => cleanInput(post('full_name')),
+                    'phone' => cleanInput(post('phone', '')),
+                    'bio' => cleanInput(post('bio', '')),
+                    'linkedin_url' => cleanInput(post('linkedin_url', '')),
+                    'portfolio_url' => cleanInput(post('portfolio_url', ''))
+                ];
+                
+                // URL validasyonu
+                if (!empty($data['linkedin_url']) && !filter_var($data['linkedin_url'], FILTER_VALIDATE_URL)) {
+                    setFlash('error', 'Geçerli bir LinkedIn URL giriniz');
+                    redirect('applicant/profile');
+                }
+                
+                if (!empty($data['portfolio_url']) && !filter_var($data['portfolio_url'], FILTER_VALIDATE_URL)) {
+                    setFlash('error', 'Geçerli bir portfolio URL giriniz');
+                    redirect('applicant/profile');
+                }
+                
+                // Profil resmi yükleme
+                if (isFileUploaded('profile_image')) {
+                    $imageUpload = uploadFile('profile_image', PROFILE_UPLOAD_PATH, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE);
+                    
+                    if ($imageUpload['success']) {
+                        // Eski resmi sil (varsa)
+                        $user = $this->userModel->find($applicantId);
+                        if (!empty($user['profile_image']) && file_exists(PROFILE_UPLOAD_PATH . '/' . $user['profile_image'])) {
+                            @unlink(PROFILE_UPLOAD_PATH . '/' . $user['profile_image']);
+                        }
+                        
+                        $data['profile_image'] = $imageUpload['fileName'];
+                    } else {
+                        setFlash('error', $imageUpload['error']);
+                        redirect('applicant/profile');
+                    }
+                }
+                
+                $result = $this->userModel->updateProfile($applicantId, $data);
+                
+                if ($result) {
+                    // Session'ı güncelle
+                    $_SESSION['user'] = array_merge($_SESSION['user'] ?? [], $data);
+                    setFlash('success', 'Profil başarıyla güncellendi');
+                    logMessage("Profile updated for applicant {$applicantId}", 'info');
+                } else {
+                    setFlash('error', 'Profil güncellenirken hata oluştu');
+                }
+                
+                redirect('applicant/profile');
+            }
+            
+            $user = $this->userModel->find($applicantId);
+            
+            if (!$user) {
+                setFlash('error', 'Kullanıcı bulunamadı');
+                redirect('applicant/dashboard');
+            }
+            
+            $this->view('applicant/profile', [
+                'title' => 'Profilim',
+                'user' => $user
+            ]);
+        } catch (Exception $e) {
+            logMessage("Profile error: " . $e->getMessage(), 'error');
+            setFlash('error', 'Profil yüklenirken bir hata oluştu');
+            redirect('applicant/dashboard');
+        }
+    }
+    
+    /**
      * Şifre değiştirme
      * 
      * @return void
@@ -780,182 +872,5 @@ class ApplicantController extends Controller {
         }
         
         return null;
-    }
-    
-    /**
-     * Profil görüntüleme
-     */
-    public function profile() {
-        $userId = authId();
-        $user = $this->userModel->find($userId);
-        
-        if (!$user) {
-            redirect('auth/login');
-        }
-        
-        $this->view('applicant/profile', [
-            'title' => 'Profilim',
-            'user' => $user
-        ]);
-    }
-    
-    /**
-     * Profil güncelleme
-     */
-    public function updateProfile() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            redirect('applicant/profile');
-        }
-        
-        $userId = authId();
-        $user = $this->userModel->find($userId);
-        
-        // Form verilerini al
-        $data = [
-            'full_name' => cleanInput(post('full_name')),
-            'email' => cleanInput(post('email')),
-            'phone' => cleanInput(post('phone')),
-            'date_of_birth' => cleanInput(post('date_of_birth')),
-            'gender' => cleanInput(post('gender')),
-            'nationality' => cleanInput(post('nationality')),
-            'location' => cleanInput(post('location')),
-            'bio' => cleanInput(post('bio')),
-            'linkedin_url' => cleanInput(post('linkedin_url')),
-            'github_url' => cleanInput(post('github_url')),
-            'portfolio_url' => cleanInput(post('portfolio_url')),
-            'skills' => cleanInput(post('skills')),
-            'languages' => cleanInput(post('languages')),
-            'experience_years' => (int)post('experience_years'),
-            'education' => cleanInput(post('education')),
-            'certifications' => cleanInput(post('certifications')),
-            'work_experience' => cleanInput(post('work_experience')),
-            'projects' => cleanInput(post('projects')),
-            'current_position' => cleanInput(post('current_position')),
-            'expected_salary' => cleanInput(post('expected_salary')),
-            'work_preference' => cleanInput(post('work_preference')),
-            'availability' => cleanInput(post('availability'))
-        ];
-        
-        // Validasyon
-        $errors = [];
-        
-        if (empty($data['full_name'])) {
-            $errors['full_name'] = 'Ad Soyad zorunludur';
-        }
-        
-        if (!empty($data['linkedin_url']) && !filter_var($data['linkedin_url'], FILTER_VALIDATE_URL)) {
-            $errors['linkedin_url'] = 'LinkedIn URL geçersiz';
-        }
-        
-        if (!empty($data['github_url']) && !filter_var($data['github_url'], FILTER_VALIDATE_URL)) {
-            $errors['github_url'] = 'GitHub URL geçersiz';
-        }
-        
-        if (!empty($data['portfolio_url']) && !filter_var($data['portfolio_url'], FILTER_VALIDATE_URL)) {
-            $errors['portfolio_url'] = 'Portfolio URL geçersiz';
-        }
-        
-        // Profil fotoğrafı yükleme
-        if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
-            $uploadResult = $this->uploadProfileImage($_FILES['profile_image']);
-            if ($uploadResult['success']) {
-                $data['profile_image'] = $uploadResult['path'];
-            } else {
-                $errors['profile_image'] = $uploadResult['message'];
-            }
-        }
-        
-        // CV yükleme
-        if (isset($_FILES['cv_file']) && $_FILES['cv_file']['error'] === UPLOAD_ERR_OK) {
-            $uploadResult = $this->uploadCV($_FILES['cv_file']);
-            if ($uploadResult['success']) {
-                $data['cv_path'] = $uploadResult['path'];
-            } else {
-                $errors['cv_file'] = $uploadResult['message'];
-            }
-        }
-        
-        if (!empty($errors)) {
-            $this->view('applicant/profile', [
-                'title' => 'Profilim',
-                'user' => $user,
-                'errors' => $errors,
-                'old' => $data
-            ]);
-            return;
-        }
-        
-        // Profili güncelle
-        $updated = $this->userModel->updateProfile($userId, $data);
-        
-        if ($updated) {
-            setFlash('success', 'Profiliniz başarıyla güncellendi');
-        } else {
-            setFlash('error', 'Profil güncellenirken hata oluştu');
-        }
-        
-        redirect('applicant/profile');
-    }
-    
-    /**
-     * Profil fotoğrafı yükleme
-     */
-    private function uploadProfileImage($file) {
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-        $maxSize = 2 * 1024 * 1024; // 2MB
-        
-        if (!in_array($file['type'], $allowedTypes)) {
-            return ['success' => false, 'message' => 'Sadece JPG, JPEG ve PNG formatları kabul edilir'];
-        }
-        
-        if ($file['size'] > $maxSize) {
-            return ['success' => false, 'message' => 'Dosya boyutu en fazla 2MB olabilir'];
-        }
-        
-        $uploadDir = APP_PATH . '/../storage/uploads/profiles/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-        
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = 'profile_' . authId() . '_' . time() . '.' . $extension;
-        $targetPath = $uploadDir . $filename;
-        
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            return ['success' => true, 'path' => 'storage/uploads/profiles/' . $filename];
-        }
-        
-        return ['success' => false, 'message' => 'Dosya yüklenirken hata oluştu'];
-    }
-    
-    /**
-     * CV yükleme
-     */
-    private function uploadCV($file) {
-        $allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        $maxSize = 5 * 1024 * 1024; // 5MB
-        
-        if (!in_array($file['type'], $allowedTypes)) {
-            return ['success' => false, 'message' => 'Sadece PDF, DOC ve DOCX formatları kabul edilir'];
-        }
-        
-        if ($file['size'] > $maxSize) {
-            return ['success' => false, 'message' => 'CV dosya boyutu en fazla 5MB olabilir'];
-        }
-        
-        $uploadDir = APP_PATH . '/../storage/uploads/cvs/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-        
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = 'cv_' . authId() . '_' . time() . '.' . $extension;
-        $targetPath = $uploadDir . $filename;
-        
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            return ['success' => true, 'path' => 'storage/uploads/cvs/' . $filename];
-        }
-        
-        return ['success' => false, 'message' => 'CV yüklenirken hata oluştu'];
     }
 }
